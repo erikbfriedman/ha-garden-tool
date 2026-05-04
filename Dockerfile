@@ -1,16 +1,17 @@
-ARG BUILD_FROM=ghcr.io/hassio-addons/base:latest
+ARG BUILD_FROM
 FROM $BUILD_FROM
 
-# Install Python 3 and pip
+# Install Python 3
 RUN apk add --no-cache python3 py3-pip
 
 WORKDIR /app
 
-# Install Python dependencies first (layer-cached until requirements change)
+# Install dependencies in a venv (avoids PEP 668 externally-managed-env errors)
 COPY backend/requirements.txt ./backend/requirements.txt
-RUN pip3 install --no-cache-dir --break-system-packages -r backend/requirements.txt
+RUN python3 -m venv /opt/venv \
+ && /opt/venv/bin/pip install --no-cache-dir -r backend/requirements.txt
 
-# Copy application files
+# Copy application
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 COPY run.sh /run.sh

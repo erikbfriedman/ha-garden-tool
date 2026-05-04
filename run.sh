@@ -1,9 +1,7 @@
 #!/usr/bin/with-contenv bashio
 
-# Read add-on options
 ANTHROPIC_KEY=$(bashio::config 'anthropic_api_key' '')
 
-# HA persistent storage — survives restarts and updates
 export PROJECTS_DIR="/data/projects"
 mkdir -p "$PROJECTS_DIR"
 
@@ -15,4 +13,4 @@ else
 fi
 
 bashio::log.info "Starting Garden Tool on port 8099"
-cd /app && exec uvicorn backend.app:app --host 0.0.0.0 --port 8099
+cd /app && exec /opt/venv/bin/uvicorn backend.app:app --host 0.0.0.0 --port 8099
