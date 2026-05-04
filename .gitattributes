@@ -1,0 +1,6 @@
+# Force Unix line endings for files that run inside the Linux container
+*.sh    text eol=lf
+run.sh  text eol=lf
+
+# Normalize everything else
+*       text=auto
