@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Local project data (personal .gdn files — NOT for the add-on repo)
+projects/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+
+# Claude Code settings (local only)
+.claude/
+
+# Local dev server leftovers
+*.log
