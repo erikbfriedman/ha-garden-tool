@@ -20,7 +20,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
-from irrigation import analyze_network
+from .irrigation import analyze_network
 
 logger = logging.getLogger("garden-tool")
 logging.basicConfig(level=logging.INFO)
