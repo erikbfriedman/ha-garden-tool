@@ -66,7 +66,7 @@ export async function fileOpen() {
 
   let projects;
   try {
-    const data = await apiGet('/api/projects');
+    const data = await apiGet('api/projects');
     // Backend returns either a plain array or { projects: [...] }
     projects = Array.isArray(data) ? data : (data.projects || []);
   } catch (e) {
@@ -78,7 +78,7 @@ export async function fileOpen() {
   if (!chosen) return;
 
   try {
-    const data = await apiGet(`/api/projects/${encodeURIComponent(chosen)}`);
+    const data = await apiGet(`api/projects/${encodeURIComponent(chosen)}`);
     fromJSON(data);
     _projectName = chosen;
     markClean(chosen);
@@ -110,7 +110,7 @@ export async function fileSaveAs() {
   if (name !== _projectName) {
     let existing;
     try {
-      const data = await apiGet('/api/projects');
+      const data = await apiGet('api/projects');
       existing = (data.projects || []);
     } catch { existing = []; }
 
@@ -124,7 +124,7 @@ export async function fileSaveAs() {
 
 async function _doSave(name) {
   try {
-    await apiPost(`/api/projects/${encodeURIComponent(name)}`, toJSON());
+    await apiPost(`api/projects/${encodeURIComponent(name)}`, toJSON());
     _projectName = name;
     markClean(name);
   } catch (e) {
@@ -184,7 +184,7 @@ export function fileImport() {
 export async function fileDelete(name) {
   if (!confirm(`Delete project "${name}" from server? This cannot be undone.`)) return false;
   try {
-    await apiDelete(`/api/projects/${encodeURIComponent(name)}`);
+    await apiDelete(`api/projects/${encodeURIComponent(name)}`);
     return true;
   } catch (e) {
     alert(`Delete failed: ${e.message}`);

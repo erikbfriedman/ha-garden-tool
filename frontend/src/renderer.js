@@ -92,7 +92,7 @@ export async function ensureArt(name, color) {
   const el = document.getElementById('art-st');
   if (el) { el.style.display = 'block'; el.textContent = 'Generating ' + name + '…'; }
   try {
-    const res = await fetch('/api/ai/art', {
+    const res = await fetch('api/ai/art', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
