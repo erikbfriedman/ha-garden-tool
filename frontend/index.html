@@ -979,27 +979,6 @@ body.theme-country .bom-tbl thead th{background:#1c3e16;}
 .oe-lock-btn:hover{opacity:.9;}
 .oe-lock-btn.is-locked{opacity:.85;color:#f0c060;}
 </style>
-<script>
-// Diagnostic: catch JS errors and display them on-screen
-(function(){
-  var box = null;
-  function show(msg){
-    if(!box){
-      box = document.createElement('div');
-      box.style.cssText='position:fixed;top:0;left:0;right:0;background:#c00;color:#fff;font:12px monospace;padding:8px 10px;z-index:99999;white-space:pre-wrap;max-height:40vh;overflow:auto;';
-      document.body.appendChild(box);
-    }
-    box.textContent += msg + '\n';
-  }
-  window.addEventListener('error', function(e){
-    show('ERROR: ' + e.message + '\n  at ' + e.filename + ':' + e.lineno);
-  });
-  window.addEventListener('unhandledrejection', function(e){
-    show('UNHANDLED PROMISE: ' + (e.reason && (e.reason.message || e.reason)));
-  });
-  window._gtReady = function(){ show = function(){}; }; // call to silence after load
-})();
-</script>
 </head>
 <body>
 <div id="app">
