@@ -7,6 +7,7 @@
 
 import { toJSON, fromJSON, reset, markClean, markDirty, beds, plants, yardObjects, faucets, YARD, wItems, connectors } from './state.js';
 import { draw, drawForExport, drawForExportBed } from './renderer.js';
+import { fit } from './viewport.js';
 import { SOIL_METRICS } from './constants.js';
 import { renderExplorer, renderSettings } from './ui.js';
 
@@ -32,6 +33,7 @@ export async function autoLoad() {
     fromJSON(data);
     _projectName = name;
     markClean(name);
+    fit();
     draw();
     renderExplorer();
     renderSettings();
