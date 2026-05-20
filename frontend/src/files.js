@@ -16,6 +16,31 @@ let _projectName = null;   // null = unsaved new project
 
 export function getProjectName() { return _projectName; }
 
+const LS_LAST = 'gt_last_project';
+function rememberProject(name) {
+  try { name ? localStorage.setItem(LS_LAST, name) : localStorage.removeItem(LS_LAST); } catch {}
+}
+
+// ── Auto-load last project on startup ────────────────────────────────────────
+
+export async function autoLoad() {
+  let name;
+  try { name = localStorage.getItem(LS_LAST); } catch {}
+  if (!name) return;
+  try {
+    const data = await apiGet(`api/projects/${encodeURIComponent(name)}`);
+    fromJSON(data);
+    _projectName = name;
+    markClean(name);
+    draw();
+    renderExplorer();
+    renderSettings();
+  } catch {
+    // Project may have been deleted — silently start fresh
+    rememberProject(null);
+  }
+}
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 async function apiGet(path) {
@@ -53,6 +78,7 @@ export function fileNew() {
   if (!confirmIfDirty()) return;
   reset();
   _projectName = null;
+  rememberProject(null);
   markClean(null);
   draw();
   renderExplorer();
@@ -82,6 +108,7 @@ export async function fileOpen() {
     fromJSON(data);
     _projectName = chosen;
     markClean(chosen);
+    rememberProject(chosen);
     draw();
     renderExplorer();
     renderSettings();
@@ -127,6 +154,7 @@ async function _doSave(name) {
     await apiPost(`api/projects/${encodeURIComponent(name)}`, toJSON());
     _projectName = name;
     markClean(name);
+    rememberProject(name);
   } catch (e) {
     alert(`Save failed: ${e.message}`);
   }

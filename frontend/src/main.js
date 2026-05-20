@@ -18,6 +18,7 @@ import { openAppSettings, closeAppSettings, openGardenInfo, closeGardenInfo, app
 import { renderLib } from './library.js';
 import { openFlowCalc, closeFlowCalc } from './flowCalc.js';
 import { openBOM, closeBOM } from './bom.js';
+import { autoLoad } from './files.js';
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
@@ -241,6 +242,9 @@ document.addEventListener('DOMContentLoaded', () => {
   applyTheme();   // apply saved theme before first paint
   fit();
   draw();
+
+  // 17. Auto-load last project
+  autoLoad();
 
   console.log('[GardenTool] Ready.');
 });
