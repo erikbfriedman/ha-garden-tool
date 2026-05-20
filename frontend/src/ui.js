@@ -574,6 +574,21 @@ function yardObjectCardHTML(obj) {
       `<option value="${s.id}"${(obj.trunkShape||'single')===s.id?' selected':''}>${s.label}</option>`
     ).join('');
 
+    // Produce / garden fields
+    const _MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const _monthOpts = (sel) => _MONTHS.map((m,i) =>
+      `<option value="${i+1}"${sel===(i+1)?' selected':''}>${m}</option>`).join('');
+    const produceCat      = obj.produce?.category || '';
+    const hasProduceFields = !!produceCat;
+    const produceMonthStart = obj.produce?.monthStart ?? 8;
+    const produceMonthEnd   = obj.produce?.monthEnd   ?? 10;
+    const produceYrs        = obj.produce?.yrsToFruit ?? 2;
+    const produceName       = (obj.produce?.name    || '').replace(/"/g,'&quot;');
+    const produceVariety    = (obj.produce?.variety || '').replace(/"/g,'&quot;');
+    const produceNotes      = (obj.produce?.notes   || '').replace(/</g,'&lt;');
+    const produceCatOpts    = ['','Fruits','Berries','Nuts','Other edible']
+      .map(c => `<option value="${c}"${produceCat===c?' selected':''}>${c||'— ornamental only —'}</option>`).join('');
+
     // Floral accent fields — visible when accent !== 'none'
     const floralType    = obj.floralAccent || 'none';
     const hasFloral     = floralType !== 'none';
@@ -626,6 +641,20 @@ function yardObjectCardHTML(obj) {
     ${csHdr('floral', 'Flowers &amp; Fruits')}
       <div class="ff"><label>Type</label><select id="yo-floral-type">${floralTypeOpts}</select></div>
       ${floralDetailHTML}
+    </div>
+    <div class="sb-div"></div>
+    ${csHdr('produce', 'Garden / Produce')}
+      <div class="ff"><label>Produces</label><select id="yo-produce-cat">${produceCatOpts}</select></div>
+      ${hasProduceFields ? `
+      <div class="ff"><label>Name</label><input id="yo-produce-name" value="${produceName}" placeholder="e.g. Fuji Apple"></div>
+      <div class="ff"><label>Variety / cultivar</label><input id="yo-produce-variety" value="${produceVariety}" placeholder="optional"></div>
+      <div class="g2">
+        <div class="ff"><label>Harvest start</label><select id="yo-produce-ms">${_monthOpts(produceMonthStart)}</select></div>
+        <div class="ff"><label>Harvest end</label><select id="yo-produce-me">${_monthOpts(produceMonthEnd)}</select></div>
+      </div>
+      <div class="ff"><label>Yrs to first fruit</label><input id="yo-produce-yrs" type="number" min="0" max="25" step="1" value="${produceYrs}"></div>
+      <div class="ff"><label>Notes</label><textarea id="yo-produce-notes" rows="2" style="resize:vertical">${produceNotes}</textarea></div>
+      ` : ''}
     </div>` : ''}`;
   } else if (obj.shape === 'polygon') {
     const isPool = obj.type === 'pool';
@@ -1915,6 +1944,22 @@ function bindCardEvents(type, obj) {
       on('yo-trunk-shape', v => { obj.trunkShape = v; S.markDirty(); draw(); });
     }
 
+    // Produce / garden bindings
+    on('yo-produce-cat', v => {
+      if (!v) { obj.produce = null; }
+      else {
+        obj.produce = obj.produce ? { ...obj.produce } : { monthStart: 8, monthEnd: 10, yrsToFruit: 2, name: '', variety: '', notes: '' };
+        obj.produce.category = v;
+      }
+      S.markDirty(); renderCard();
+    });
+    on('yo-produce-name',    v => { if (obj.produce) { obj.produce.name    = v; S.markDirty(); } });
+    on('yo-produce-variety', v => { if (obj.produce) { obj.produce.variety = v; S.markDirty(); } });
+    on('yo-produce-ms',      v => { if (obj.produce) { obj.produce.monthStart   = +v; S.markDirty(); } });
+    on('yo-produce-me',      v => { if (obj.produce) { obj.produce.monthEnd     = +v; S.markDirty(); } });
+    on('yo-produce-yrs',     v => { if (obj.produce) { obj.produce.yrsToFruit   = +v; S.markDirty(); } });
+    on('yo-produce-notes',   v => { if (obj.produce) { obj.produce.notes        = v;  S.markDirty(); } });
+
     // Steps-specific bindings
     if (obj.type === 'steps') {
       on('yo-step-depth', v => { obj.stepDepth = (parseFloat(v) || 11) * 4; S.markDirty(); renderCard(); draw(); });
@@ -2507,10 +2552,11 @@ export function renderExplorer() {
     if (open) {
       html += `<div class="oe-ch">`;
       bushObjs.forEach(obj => {
+        const produceTag = obj.produce?.category ? `<span title="${obj.produce.name||obj.produce.category}" style="font-size:10px;opacity:.75">🍎</span>` : '';
         html += `<div class="oe-cr${S.sel === obj ? ' oe-sel' : ''}" data-sel-obj="yardObject:${obj.id}" data-drag-id="${obj.id}" data-drag-type="yardObject" draggable="true">
           <span class="oe-drag-hdl" title="Drag to reorder">⠿</span>
           <span class="oe-cic">🌿</span>
-          <span class="oe-cnm">${obj.name || 'Bush'}</span>
+          <span class="oe-cnm">${obj.name || 'Bush'}${produceTag}</span>
           <button class="oe-lock-btn${obj.locked ? ' is-locked' : ''}" data-lock-obj="yardObject:${obj.id}">${LOCK_IC(obj.locked)}</button>
           <span class="oe-cgo">→</span>
         </div>`;
@@ -2596,10 +2642,11 @@ export function renderExplorer() {
     if (open) {
       html += `<div class="oe-ch">`;
       treeObjs.forEach(obj => {
+        const produceTag = obj.produce?.category ? `<span title="${obj.produce.name||obj.produce.category}" style="font-size:10px;opacity:.75">🍎</span>` : '';
         html += `<div class="oe-cr${S.sel === obj ? ' oe-sel' : ''}" data-sel-obj="yardObject:${obj.id}" data-drag-id="${obj.id}" data-drag-type="yardObject" draggable="true">
           <span class="oe-drag-hdl" title="Drag to reorder">⠿</span>
           <span class="oe-cic">🌳</span>
-          <span class="oe-cnm">${obj.name || 'Tree'}</span>
+          <span class="oe-cnm">${obj.name || 'Tree'}${produceTag}</span>
           <button class="oe-lock-btn${obj.locked ? ' is-locked' : ''}" data-lock-obj="yardObject:${obj.id}">${LOCK_IC(obj.locked)}</button>
           <span class="oe-cgo">→</span>
         </div>`;

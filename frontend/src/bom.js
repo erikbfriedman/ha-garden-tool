@@ -7,7 +7,7 @@
  */
 
 import {
-  beds, plants, plantLib, pipes, connectors, wItems, faucets, appSettings,
+  beds, plants, plantLib, yardObjects, pipes, connectors, wItems, faucets, appSettings,
 } from './state.js';
 import {
   FT, CONNECTOR_TYPES, PIPE_MATERIAL_LABELS, PIPE_SIZE_LABELS, BED_INFILL_TYPES,
@@ -300,8 +300,21 @@ function computeLineItems(cfg) {
         plantMap.set(key, { nm, variety, spreadIn, isVine, isPerennial, category, count: 0 });
       plantMap.get(key).count++;
     }
+    // Include productive trees/bushes
+    for (const o of yardObjects) {
+      if (!(o.type === 'tree' || o.type === 'bush') || !o.produce?.category) continue;
+      const key = `woody:${o.id}`;
+      const nm  = o.produce.name || o.name || (o.type === 'tree' ? 'Fruit Tree' : 'Fruit Bush');
+      const variety = o.produce.variety || '';
+      const category = o.produce.category;
+      const spreadIn = o.r ? Math.round(o.r / 2) : 48;
+      if (!plantMap.has(key))
+        plantMap.set(key, { nm, variety, spreadIn, isVine: false, isPerennial: true, category, count: 0 });
+      plantMap.get(key).count++;
+    }
+
     // Group by plant category
-    const catOrder = ['Vegetables','Herbs','Fruits','Flowers','Other','Plant'];
+    const catOrder = ['Vegetables','Herbs','Fruits','Berries','Nuts','Flowers','Other edible','Other','Plant'];
     const sorted = [...plantMap.entries()].sort((a, b) => {
       const ci = (cat) => { const i = catOrder.indexOf(cat); return i < 0 ? 99 : i; };
       return ci(a[1].category) - ci(b[1].category) || a[1].nm.localeCompare(b[1].nm);
