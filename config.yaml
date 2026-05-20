@@ -1,6 +1,6 @@
 name: "Garden Tool"
 description: "Yard & garden planner with irrigation network analysis"
-version: "2.0.10"
+version: "2.0.11"
 slug: "garden_tool"
 init: false
 arch:

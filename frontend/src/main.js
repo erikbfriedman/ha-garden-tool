@@ -15,7 +15,7 @@ import {
   renderExplorer, renderSettings, updateUndoRedo, openCard, toggleSB, closeCard,
 } from './ui.js';
 import { openAppSettings, closeAppSettings, openGardenInfo, closeGardenInfo, applyTheme } from './settings.js';
-import { renderLib } from './library.js';
+import { renderLib, newPlantDef } from './library.js';
 import { openFlowCalc, closeFlowCalc } from './flowCalc.js';
 import { openBOM, closeBOM } from './bom.js';
 import { autoLoad } from './files.js';
@@ -161,6 +161,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // 10. Library back buttons
   document.getElementById('lib-back')?.addEventListener('click',      () => showView('v-tools'));
   document.getElementById('yard-lib-back')?.addEventListener('click', () => showView('v-tools'));
+
+  // 10b. Define new plant
+  document.getElementById('lib-new-plant')?.addEventListener('click', () => {
+    const def = newPlantDef(plantLib);
+    openCard('plantdef', def);
+    showView('v-card');
+  });
 
   // 11. Settings inputs (live binding)
   document.getElementById('settings-body')?.addEventListener('change', handleSettingsChange);
