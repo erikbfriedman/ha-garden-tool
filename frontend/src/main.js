@@ -107,6 +107,23 @@ document.addEventListener('DOMContentLoaded', () => {
     setSel(null); setMultiSel([]); closeCard(); closeSB(); draw();
   });
 
+  // 8b. View menu (layers) — stays open while toggling checkboxes
+  const viewBtn  = document.getElementById('mb-view-btn');
+  const viewMenu = document.getElementById('mb-view-menu');
+  if (viewBtn && viewMenu) {
+    viewBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      viewMenu.classList.toggle('open');
+      ['mb-file-menu', 'mb-settings-menu', 'mb-functions-menu']
+        .forEach(id => document.getElementById(id)?.classList.remove('open'));
+    });
+    viewMenu.addEventListener('click', e => e.stopPropagation());
+    // Capture phase: other buttons stopPropagation, so close View before they run
+    document.addEventListener('click', e => {
+      if (!viewMenu.contains(e.target) && !viewBtn.contains(e.target)) viewMenu.classList.remove('open');
+    }, true);
+  }
+
   // 9. Settings gear menu
   const settingsBtn  = document.getElementById('mb-settings-btn');
   const settingsMenu = document.getElementById('mb-settings-menu');
@@ -209,10 +226,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function hasStyle(id, v) { const el = document.getElementById(id); return el && el.style.display === v; }
 
     // 1. Dropdowns (file / settings / functions menus)
-    const anyDropdown = ['mb-file-menu', 'mb-settings-menu', 'mb-functions-menu']
+    const anyDropdown = ['mb-file-menu', 'mb-settings-menu', 'mb-functions-menu', 'mb-view-menu']
       .some(id => document.getElementById(id)?.classList.contains('open'));
     if (anyDropdown) {
-      ['mb-file-menu', 'mb-settings-menu', 'mb-functions-menu']
+      ['mb-file-menu', 'mb-settings-menu', 'mb-functions-menu', 'mb-view-menu']
         .forEach(id => document.getElementById(id)?.classList.remove('open'));
       return stop();
     }
