@@ -12,6 +12,7 @@ import { draw, drawState, updateCoords, ensureArt, markNetworkDirty } from './re
 import { hitTest, hitTestLabel, rubberBandSelect } from './hitTest.js';
 import { renderCard, openCard, closeCard, renderExplorer, openSB, closeSB, updateUndoRedo } from './ui.js';
 import { renderLib, setLibBedTarget, renderYardLib } from './library.js';
+import { startPlantFlow, flowIsPicking, chooseBed, cancelPlantFlow } from './plantFlow.js';
 import {
   uid, pIn, fIn, fInFrac, isDrip, deepClone, dist, clamp, evalMathIn, evalMathNum,
   emitterCount, spacingForCount, angleSnap15, getLabelWorldPos, applyPerpendicularSnap, bendGeometry,
@@ -278,7 +279,7 @@ function cancelAllDrawing() {
   drawState.pipeFromId = null; drawState.pipeMenuOpen = false;
   drawState.constraintAngles = null; drawState.pipeTooSharp = false;
   drawState.perpSnap = null;
-  drawState.ghost = null; drawState.ghostType = null;
+  drawState.ghost = null; drawState.ghostType = null; drawState.plantFlow = null;
   drawState.snapToStart = false; drawState.snapTarget = null; drawState.nodeSnapTarget = null;
   drawState.pipeHoverNode = null; drawState.pipeHoverAngles = [];
   assemblyNodeDragging = false;
@@ -585,6 +586,7 @@ function onLibrarySelect(defId, bedId, editMode = false, previewOnly = false) {
   if (bedId && !previewOnly) {
     const bed = S.beds.find(b => b.id === bedId);
     if (!bed) return;
+    if (!_libFillMode && def.category === 'Vegetables') { startPlantFlow(def, bed); return; }
     if (_libFillMode) {
       // Auto-fill the entire bed with a grid of this plant
       const fillLayout = _libFillMode === 'stagger' ? 'stagger' : 'linear';
@@ -609,6 +611,8 @@ function onLibrarySelect(defId, bedId, editMode = false, previewOnly = false) {
     showView('v-card');
     ensureArt(def.name, def.color);
     draw(); renderExplorer();
+  } else if (!previewOnly && def.category === 'Vegetables') {
+    startPlantFlow(def, null);
   } else if (!previewOnly) {
     // Ghost placement — switch to canvas
     drawState.ghost = {
@@ -642,6 +646,7 @@ function onLibrarySelect(defId, bedId, editMode = false, previewOnly = false) {
 // ── View management ───────────────────────────────────────────────────────────
 
 export function showView(id) {
+  document.getElementById('sb')?.classList.toggle('sheet', id === 'v-pplace');
   document.querySelectorAll('.sv').forEach(el => {
     el.classList.toggle('hidden', el.id !== id);
   });
@@ -668,6 +673,15 @@ function onMouseDown(e) {
   let [wx, wy] = VP.toWorld(e.clientX, e.clientY);
   ({ x: wx, y: wy } = applyGridSnap(wx, wy));
   const z = VP.getZ();
+
+  // ── Guided plant placement: tap a bed on the map to choose it ──────────────
+  if (drawState.plantFlow) {
+    if (flowIsPicking()) {
+      const h = hitTest(wx, wy, z);
+      if (h?.type === 'bed') chooseBed(h.obj);
+    }
+    return;
+  }
 
   // ── Ghost placement ────────────────────────────────────────────────────────
   if (drawState.ghost) {
@@ -2424,8 +2438,10 @@ function placeGhost(wx, wy) {
     return;
   }
   if (type === 'plant') {
+    const cb = g.constrainBed ? S.beds.find(b => b.id === g.constrainBed) : null;
+    if (cb && !pointInBed(cb, wx, wy)) { showHint(`Click inside ${cb.name} to place ${g.name}`); return; }
     S.snap();
-    const bed = S.beds.find(b => pointInBed(b, wx, wy));
+    const bed = cb || S.beds.find(b => pointInBed(b, wx, wy));
     const p = {
       id: uid(), x: wx, y: wy,
       name: g.name, color: g.color, spreadQ: g.spreadQ,
@@ -2634,6 +2650,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     e.preventDefault();
     if (tool === 'measure') { clearMeasure(); setTool('select'); draw(); return; }
+    if (drawState.plantFlow)    { cancelPlantFlow(); draw(); return; }
     if (drawState.ghost)        { drawState.ghost = null; drawState.ghostType = null; draw(); return; }
     if (drawState.bedDraw)      { cancelAllDrawing(); setTool('select'); draw(); return; }
     if (drawState.polyBedDraw)  { cancelAllDrawing(); setTool('select'); draw(); return; }

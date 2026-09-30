@@ -63,6 +63,17 @@ export function fit() {
   document.getElementById('zoom-fit-btn').textContent = 'Fit';
 }
 
+/** Zoom/pan so a world rect fills the free canvas area (excluding overlay padding in px). */
+export function focusRect(x, y, w, h, pad = {}) {
+  const r = wrap.getBoundingClientRect();
+  const left = pad.left || 0, bottom = pad.bottom || 0, m = 36;
+  const availW = Math.max(80, r.width - left), availH = Math.max(80, r.height - bottom);
+  z = Math.max(0.12, Math.min(6, (availW - m * 2) / Math.max(w, 1), (availH - m * 2) / Math.max(h, 1)));
+  px = left + availW / 2 - (x + w / 2) * z;
+  py = availH / 2 - (y + h / 2) * z;
+  document.getElementById('zoom-fit-btn').textContent = Math.round(z * 100) + '%';
+}
+
 export function adjZ(delta) {
   const r = wrap.getBoundingClientRect();
   const newZ = Math.max(0.12, Math.min(6, z + delta));

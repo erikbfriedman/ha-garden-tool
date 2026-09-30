@@ -5,7 +5,7 @@
  */
 
 import { fit, adjZ } from './viewport.js';
-import { draw } from './renderer.js';
+import { draw, drawState } from './renderer.js';
 import {
   undo, redo, L, YARD, GS, yardObjects, beds, plants, wItems, faucets, pipes,
   plantLib, sel, setSel, setMultiSel,
@@ -105,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('sb-close')?.addEventListener('click', () => {
+    drawState.plantFlow = null;
     setSel(null); setMultiSel([]); closeCard(); closeSB(); draw();
   });
 
@@ -282,6 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── View switching ─────────────────────────────────────────────────────────────
 
 export function showView(id) {
+  document.getElementById('sb')?.classList.toggle('sheet', id === 'v-pplace');
   document.querySelectorAll('#sb .sv').forEach(v => v.classList.toggle('hidden', v.id !== id));
 }
 

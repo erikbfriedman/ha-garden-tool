@@ -21,7 +21,7 @@ import {
   getFencePostPositions, getLabelWorldPos, bendGeometry,
 } from './utils.js';
 import {
-  D2R, YARD_OBJECT_TYPES, PIPE_COLORS, ZONE_COLORS, CONNECTOR_TYPES, PIPE_MIN_BEND_QIN, SPR_DEF,
+  D2R, IN, YARD_OBJECT_TYPES, PIPE_COLORS, ZONE_COLORS, CONNECTOR_TYPES, PIPE_MIN_BEND_QIN, SPR_DEF,
   ROOFED_TYPES,
 } from './constants.js';
 import { PICONS, WICONS } from './icons.js';
@@ -36,7 +36,7 @@ export let drawState = {
   // Rubber-band selection
   rubberBand: false, rbStart: null, rbCurrent: null,
   // Ghost (drag-before-place)
-  ghost: null, ghostType: null,
+  ghost: null, ghostType: null, plantFlow: null,
   // Bed drawing
   bedDraw: false, bedStart: null,
   // Yard-object drawing
@@ -2036,6 +2036,30 @@ function drawPlants(ctx, z) {
     // Plant label
     drawObjLabel(ctx, z, p, p.x, p.y + p.spreadQ / 2 + 3 / z,
       { defaultSize: 9, color: 'rgba(200,232,160,0.75)' });
+  }
+
+  // Guided-placement preview: target bed outline + planned plant circles
+  const pf = drawState.plantFlow;
+  if (pf?.bed) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(200,255,120,.95)';
+    ctx.lineWidth = 2.5 / z;
+    ctx.setLineDash([8 / z, 5 / z]);
+    _bedPath(ctx, pf.bed, 3 / z);
+    ctx.stroke();
+    ctx.restore();
+    if (pf.points?.length) {
+      const rr = (pf.def.spreadIn || 6) * IN / 2;
+      ctx.save();
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = pf.def.color + '44';
+      ctx.strokeStyle = pf.def.color;
+      ctx.lineWidth = 1.5 / z;
+      for (const pt of pf.points) {
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, rr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      }
+      ctx.restore();
+    }
   }
 
   // Ghost plant (drag before place)
