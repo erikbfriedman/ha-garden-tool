@@ -10,7 +10,7 @@ import * as S from './state.js';
 import { connectors, spacingMeasures, buildDownstreamBranch } from './state.js';
 import { draw, drawState, updateCoords, ensureArt, markNetworkDirty } from './renderer.js';
 import { hitTest, hitTestLabel, rubberBandSelect } from './hitTest.js';
-import { renderCard, openCard, closeCard, renderExplorer, openSB, updateUndoRedo } from './ui.js';
+import { renderCard, openCard, closeCard, renderExplorer, openSB, closeSB, updateUndoRedo } from './ui.js';
 import { renderLib, setLibBedTarget, renderYardLib } from './library.js';
 import {
   uid, pIn, fIn, fInFrac, isDrip, deepClone, dist, clamp, evalMathIn, evalMathNum,
@@ -183,6 +183,11 @@ const TOOL_CURSORS = {
 
 // ── Set tool ──────────────────────────────────────────────────────────────────
 
+/** On narrow screens the sidebar covers the canvas — hide it once the user is ready to place. */
+function collapseSBForPlacement() {
+  if (window.matchMedia('(max-width: 768px)').matches) closeSB();
+}
+
 export function setTool(t) {
   if (tool === 'measure' && t !== 'measure') clearMeasure();
   tool = t;
@@ -225,6 +230,7 @@ export function setTool(t) {
     measure:  'Click to measure · Type D (distance) or X/Y then click/📌 to pin snap node · Backspace to undo · Esc to clear',
   };
   if (hints[t]) showHint(hints[t]);
+  if (t !== 'select' && t !== 'plant' && t !== 'yard') collapseSBForPlacement();
   // Show measure HUD when measure tool is active (cancelAllDrawing may have hidden it)
   updatePlaceHUD();
   // Auto-focus the first relevant field when measure tool activates
@@ -251,7 +257,7 @@ export function setYardType(type, previewOnly = false) {
     el.classList.toggle('sel', el.dataset.type === type);
   });
   // Only switch back to canvas when the user explicitly clicks (not just hovering via scroll)
-  if (!previewOnly) showView('v-tools');
+  if (!previewOnly) { showView('v-tools'); collapseSBForPlacement(); }
 }
 
 function openYardObjectLib() {
@@ -615,6 +621,7 @@ function onLibrarySelect(defId, bedId, editMode = false, previewOnly = false) {
     tool = 'plant';
     VP.getCanvas().style.cursor = _plantCursor(def);
     showView('v-tools');
+    collapseSBForPlacement();
     showHint('Click to place ' + def.name + ' · Esc to cancel');
     draw();
   } else {
