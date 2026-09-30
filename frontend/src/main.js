@@ -12,7 +12,7 @@ import {
 } from './state.js';
 import { setTool, initYardPicker, initSprPicker, confirmConnPopup, cancelConnPopup, initSpacingEditOverlay } from './tools.js';
 import {
-  renderExplorer, renderSettings, updateUndoRedo, openCard, toggleSB, closeCard,
+  renderExplorer, renderSettings, updateUndoRedo, openCard, toggleSB, closeSB, closeCard,
 } from './ui.js';
 import { openAppSettings, closeAppSettings, openGardenInfo, closeGardenInfo, applyTheme } from './settings.js';
 import { renderLib, newPlantDef } from './library.js';
@@ -101,6 +101,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('mb-tools-btn')?.addEventListener('click', () => {
     setSel(null); setMultiSel([]); closeCard(); draw();
     toggleSB();
+  });
+
+  document.getElementById('sb-close')?.addEventListener('click', () => {
+    setSel(null); setMultiSel([]); closeCard(); closeSB(); draw();
   });
 
   // 9. Settings gear menu

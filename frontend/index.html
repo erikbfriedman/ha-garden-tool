@@ -18,6 +18,9 @@ body{background:#0c1a07;font-family:'DM Sans',system-ui,sans-serif;color:#c8e8a0
 /* ── Sidebar ── */
 #sb{position:absolute;top:0;left:0;bottom:0;width:248px;background:#111c0a;border-right:1px solid rgba(255,255,255,.07);box-shadow:4px 0 24px rgba(0,0,0,.5);z-index:50;transform:translateX(-100%);transition:transform .2s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden;}
 #sb.open{transform:translateX(0);}
+#sb-close{position:absolute;top:6px;right:6px;width:32px;height:32px;z-index:10;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:rgba(17,28,10,.92);color:rgba(200,232,160,.8);font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;}
+#sb-close:hover{background:rgba(120,190,60,.2);color:#fff;}
+#sb .sb-head{padding-right:46px;}
 
 /* Sidebar views (stacked, only one visible) */
 .sv{position:absolute;inset:0;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.1) transparent;transition:opacity .15s,transform .15s;}
@@ -1089,6 +1092,7 @@ body.theme-country .bom-tbl thead th{background:#1c3e16;}
 
   <!-- Sidebar -->
   <div id="sb">
+    <button id="sb-close" title="Close menu" aria-label="Close menu">✕</button>
 
     <!-- Tools view -->
     <div class="sv" id="v-tools">
