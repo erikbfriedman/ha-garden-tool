@@ -32,6 +32,10 @@ import { drawFillPattern, drawStepsShape, drawDeckBeams, drawRoofPattern } from 
 
 // ── Tool drawing state (set by tools.js) ─────────────────────────────────────
 
+const _overlays = [];
+/** Modules register a (ctx, z) callback that is drawn on top of the scene. */
+export function registerOverlay(fn) { _overlays.push(fn); }
+
 export let drawState = {
   // Rubber-band selection
   rubberBand: false, rbStart: null, rbCurrent: null,
@@ -170,6 +174,7 @@ export function draw() {
   if (L.snapNodes) drawSnapNodes(ctx, z);
   drawOverlays(ctx, z);
   drawMeasureTool(ctx, z);
+  for (const fn of _overlays) fn(ctx, z);
 
   VP.end();
 }

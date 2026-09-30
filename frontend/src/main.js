@@ -10,7 +10,7 @@ import {
   undo, redo, L, YARD, GS, yardObjects, beds, plants, wItems, faucets, pipes,
   plantLib, sel, setSel, setMultiSel,
 } from './state.js';
-import { setTool, initYardPicker, initSprPicker, initPlanterPicker, confirmConnPopup, cancelConnPopup, initSpacingEditOverlay } from './tools.js';
+import { setTool, initYardPicker, initSprPicker, confirmConnPopup, cancelConnPopup, initSpacingEditOverlay } from './tools.js';
 import {
   renderExplorer, renderSettings, updateUndoRedo, openCard, toggleSB, closeSB, closeCard,
 } from './ui.js';
@@ -212,7 +212,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // 14. Sub-pickers
   initYardPicker();
   initSprPicker();
-  initPlanterPicker();
   initSpacingEditOverlay();
 
   // 15. Re-draw on viewport pan/zoom (events bubble from cv-wrap)
@@ -283,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── View switching ─────────────────────────────────────────────────────────────
 
 export function showView(id) {
-  document.getElementById('sb')?.classList.toggle('sheet', id === 'v-pplace');
+  document.getElementById('sb')?.classList.toggle('sheet', id === 'v-pplace' || id === 'v-oplace');
   document.querySelectorAll('#sb .sv').forEach(v => v.classList.toggle('hidden', v.id !== id));
 }
 

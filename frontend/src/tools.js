@@ -13,6 +13,7 @@ import { hitTest, hitTestLabel, rubberBandSelect } from './hitTest.js';
 import { renderCard, openCard, closeCard, renderExplorer, openSB, closeSB, updateUndoRedo } from './ui.js';
 import { renderLib, setLibBedTarget, renderYardLib } from './library.js';
 import { startPlantFlow, flowIsPicking, chooseBed, cancelPlantFlow } from './plantFlow.js';
+import { startOffsetPlace, offsetPickRef, cancelOffsetPlace } from './offsetPlace.js';
 import {
   uid, pIn, fIn, fInFrac, isDrip, deepClone, dist, clamp, evalMathIn, evalMathNum,
   emitterCount, spacingForCount, angleSnap15, getLabelWorldPos, applyPerpendicularSnap, bendGeometry,
@@ -39,7 +40,6 @@ import {
 let tool = 'select';
 let activeSprType = 'Full circle';
 let activeYardType = 'house';
-let activePlanter = { type: 'pot', diaIn: 12 };
 
 // Drag state
 let dragging = false, dragOX = 0, dragOY = 0;
@@ -204,7 +204,6 @@ export function setTool(t) {
   if (btn) btn.classList.add('active');
   // Show/hide sub-pickers
   document.getElementById('spr-picker')?.classList.toggle('show', t === 'sprinkler');
-  document.getElementById('planter-picker')?.classList.toggle('show', t === 'planter');
   // Cursor
   const cv = VP.getCanvas();
   if (t === 'yard') {
@@ -214,7 +213,7 @@ export function setTool(t) {
   } else {
     cv.style.cursor = TOOL_CURSORS[t] || 'crosshair';
   }
-  if (t === 'planter') makePlanterGhost();
+  if (t === 'planter' || t === 'faucet' || t === 'sprinkler') startOffsetPlace(t);
   // Open library views when those tools are activated
   if (t === 'plant') openLibrary();
   if (t === 'yard')  openYardObjectLib();
@@ -231,7 +230,7 @@ export function setTool(t) {
     measure:  'Click to measure · Type D (distance) or X/Y then click/📌 to pin snap node · Backspace to undo · Esc to clear',
   };
   if (hints[t]) showHint(hints[t]);
-  if (t !== 'select' && t !== 'plant' && t !== 'yard') collapseSBForPlacement();
+  if (!['select', 'plant', 'yard', 'planter', 'faucet', 'sprinkler'].includes(t)) collapseSBForPlacement();
   // Show measure HUD when measure tool is active (cancelAllDrawing may have hidden it)
   updatePlaceHUD();
   // Auto-focus the first relevant field when measure tool activates
@@ -258,7 +257,11 @@ export function setYardType(type, previewOnly = false) {
     el.classList.toggle('sel', el.dataset.type === type);
   });
   // Only switch back to canvas when the user explicitly clicks (not just hovering via scroll)
-  if (!previewOnly) { showView('v-tools'); collapseSBForPlacement(); }
+  if (!previewOnly) {
+    const shp = YARD_OBJECT_TYPES[type]?.shape;
+    if (tool === 'yard' && (shp === 'rect' || shp === 'circle')) { startOffsetPlace('yard', { type }); return; }
+    showView('v-tools'); collapseSBForPlacement();
+  }
 }
 
 function openYardObjectLib() {
@@ -279,7 +282,7 @@ function cancelAllDrawing() {
   drawState.pipeFromId = null; drawState.pipeMenuOpen = false;
   drawState.constraintAngles = null; drawState.pipeTooSharp = false;
   drawState.perpSnap = null;
-  drawState.ghost = null; drawState.ghostType = null; drawState.plantFlow = null;
+  drawState.ghost = null; drawState.ghostType = null; drawState.plantFlow = null; drawState.offsetPlace = null;
   drawState.snapToStart = false; drawState.snapTarget = null; drawState.nodeSnapTarget = null;
   drawState.pipeHoverNode = null; drawState.pipeHoverAngles = [];
   assemblyNodeDragging = false;
@@ -614,20 +617,8 @@ function onLibrarySelect(defId, bedId, editMode = false, previewOnly = false) {
   } else if (!previewOnly && def.category === 'Vegetables') {
     startPlantFlow(def, null);
   } else if (!previewOnly) {
-    // Ghost placement — switch to canvas
-    drawState.ghost = {
-      x: 0, y: 0,
-      name: def.name, color: def.color,
-      spreadQ: def.spreadIn * IN,
-      libId: def.id, iconId: def.iconId || 'leaf',
-    };
-    drawState.ghostType = 'plant';
     tool = 'plant';
-    VP.getCanvas().style.cursor = _plantCursor(def);
-    showView('v-tools');
-    collapseSBForPlacement();
-    showHint('Click to place ' + def.name + ' · Esc to cancel');
-    draw();
+    startOffsetPlace('plant', { def });
   } else {
     // Preview-only (wheel scroll in library): update ghost + cursor, stay in library
     drawState.ghost = {
@@ -646,7 +637,7 @@ function onLibrarySelect(defId, bedId, editMode = false, previewOnly = false) {
 // ── View management ───────────────────────────────────────────────────────────
 
 export function showView(id) {
-  document.getElementById('sb')?.classList.toggle('sheet', id === 'v-pplace');
+  document.getElementById('sb')?.classList.toggle('sheet', id === 'v-pplace' || id === 'v-oplace');
   document.querySelectorAll('.sv').forEach(el => {
     el.classList.toggle('hidden', el.id !== id);
   });
@@ -675,6 +666,7 @@ function onMouseDown(e) {
   const z = VP.getZ();
 
   // ── Guided plant placement: tap a bed on the map to choose it ──────────────
+  if (drawState.offsetPlace) { offsetPickRef(hitTest(wx, wy, z)); return; }
   if (drawState.plantFlow) {
     if (flowIsPicking()) {
       const h = hitTest(wx, wy, z);
@@ -2378,84 +2370,89 @@ function findBedForPts(pts) {
   return S.beds.find(b => pointInBed(b, cx, cy));
 }
 
-function makePlanterGhost() {
-  const t = PLANTER_TYPES.find(x => x.id === activePlanter.type) || PLANTER_TYPES[0];
-  drawState.ghost = {
-    x: _lastWX, y: _lastWY, d: activePlanter.diaIn * IN,
-    color: t.color, planterType: t.id, depthIn: t.depthIn,
+/** Create a circular planter (bed) centred at (x,y) with diameter dQ (qin). */
+export function createPlanterAt(x, y, dQ, typeId) {
+  const r = dQ / 2;
+  const t = PLANTER_TYPES.find(v => v.id === typeId) || PLANTER_TYPES[0];
+  const base = t.label.replace(/\s*\(.*\)/, '');
+  const n = S.beds.filter(b => b.shape === 'circle').length + 1;
+  S.snap();
+  const b = {
+    id: uid(), shape: 'circle', x: x - r, y: y - r, w: dQ, h: dQ, cr: 0,
+    name: `${base} ${n}`, color: t.color, borderColor: t.color, borderWidth: 'heavy',
+    infill: 'dirt', isRaised: true, height: `${t.depthIn}"`,
+    planterType: t.id, depthIn: t.depthIn,
+    location: '', locked: false, lattices: [],
   };
-  drawState.ghostType = 'planter';
+  S.beds.push(b);
+  setTool('select');
+  S.setSel(b);
+  openCard('bed', b);
+  showView('v-card');
+  openSB();
+  S.markDirty(); draw(); renderExplorer();
 }
 
-export function initPlanterPicker() {
-  const el = document.getElementById('planter-picker');
-  if (!el) return;
-  const opts = PLANTER_TYPES.map(t => `<option value="${t.id}">${t.icon} ${t.label}</option>`).join('');
-  el.innerHTML = `
-    <div class="spr-pt">Planter</div>
-    <div class="ff"><label>Type</label><select id="planter-type">${opts}</select></div>
-    <div class="ff"><label>Diameter (in)</label>
-      <input id="planter-dia" type="number" min="4" max="120" step="1" value="${activePlanter.diaIn}"></div>`;
-  const sel = el.querySelector('#planter-type'), dia = el.querySelector('#planter-dia');
-  sel.value = activePlanter.type;
-  sel.addEventListener('change', () => {
-    const t = PLANTER_TYPES.find(x => x.id === sel.value) || PLANTER_TYPES[0];
-    activePlanter = { type: t.id, diaIn: t.diaIn };
-    dia.value = t.diaIn;
-    if (tool === 'planter') { makePlanterGhost(); draw(); }
-  });
-  dia.addEventListener('input', () => {
-    const v = parseFloat(dia.value);
-    if (!(v >= 4)) return;
-    activePlanter.diaIn = v;
-    if (tool === 'planter') { makePlanterGhost(); draw(); }
-  });
+/** Create a plant from ghost-like data {name,color,spreadQ,libId,iconId} at (x,y). */
+function createPlantAt(g, x, y, bed) {
+  S.snap();
+  const p = {
+    id: uid(), x, y,
+    name: g.name, color: g.color, spreadQ: g.spreadQ,
+    libId: g.libId, iconId: g.iconId || 'leaf',
+    parentBed: bed?.id, locked: false,
+  };
+  S.plants.push(p);
+  drawState.ghost = null; drawState.ghostType = null;
+  setTool('select');   // resets tool state, clears any lingering selection
+  S.setSel(p);         // re-select the placed plant
+  openCard('plant', p);
+  showView('v-card');
+  openSB();
+  S.markDirty(); draw(); renderExplorer();
+}
+
+/** Place an item at an exact world position (used by offset placement). */
+export function commitPoint(kind, x, y, p = {}) {
+  switch (kind) {
+    case 'planter':   return createPlanterAt(x, y, p.d, p.type);
+    case 'plant':     return createPlantAt(p.ghost, x, y, S.beds.find(b => pointInBed(b, x, y)));
+    case 'faucet':    return placeFaucet(x, y);
+    case 'sprinkler': return placeSprinkler(x, y);
+    case 'yard':
+      return p.shape === 'circle' ? finalizeYardCircle(x, y, p.r, p.type)
+                                  : finalizeYardRect(x, y, p.w, p.h, p.type);
+  }
+}
+
+/** Switch to click-to-place ("free place") after the offset panel is dismissed. */
+export function startFreePlace(kind, p = {}) {
+  if (kind === 'planter') {
+    const t = PLANTER_TYPES.find(v => v.id === p.type) || PLANTER_TYPES[0];
+    drawState.ghost = { x: _lastWX, y: _lastWY, d: p.d, color: t.color, planterType: t.id, depthIn: t.depthIn };
+    drawState.ghostType = 'planter';
+    showHint(`Click to place the ${t.label.replace(/\s*\(.*\)/, '').toLowerCase()} · Esc to cancel`);
+  } else if (kind === 'plant') {
+    drawState.ghost = { x: _lastWX, y: _lastWY, ...p.ghost };
+    drawState.ghostType = 'plant';
+    VP.getCanvas().style.cursor = 'crosshair';
+    showHint(`Click to place ${p.ghost.name} · Esc to cancel`);
+  } else if (kind === 'yard') {
+    showHint('Click + drag to draw · Esc to cancel');
+  } else {
+    showHint(`Click to place a ${kind} · Esc to cancel`);
+  }
+  draw();
 }
 
 function placeGhost(wx, wy) {
   const g = drawState.ghost;
   const type = drawState.ghostType;
-  if (type === 'planter') {
-    const r = g.d / 2;
-    const t = PLANTER_TYPES.find(x => x.id === g.planterType) || PLANTER_TYPES[0];
-    const base = t.label.replace(/\s*\(.*\)/, '');
-    const n = S.beds.filter(b => b.shape === 'circle').length + 1;
-    S.snap();
-    const b = {
-      id: uid(), shape: 'circle', x: wx - r, y: wy - r, w: g.d, h: g.d, cr: 0,
-      name: `${base} ${n}`, color: t.color, borderColor: t.color, borderWidth: 'heavy',
-      infill: 'dirt', isRaised: true, height: `${g.depthIn}"`,
-      planterType: t.id, depthIn: g.depthIn,
-      location: '', locked: false, lattices: [],
-    };
-    S.beds.push(b);
-    setTool('select');
-    S.setSel(b);
-    openCard('bed', b);
-    showView('v-card');
-    openSB();
-    S.markDirty(); draw(); renderExplorer();
-    return;
-  }
+  if (type === 'planter') { createPlanterAt(wx, wy, g.d, g.planterType); return; }
   if (type === 'plant') {
     const cb = g.constrainBed ? S.beds.find(b => b.id === g.constrainBed) : null;
     if (cb && !pointInBed(cb, wx, wy)) { showHint(`Click inside ${cb.name} to place ${g.name}`); return; }
-    S.snap();
-    const bed = cb || S.beds.find(b => pointInBed(b, wx, wy));
-    const p = {
-      id: uid(), x: wx, y: wy,
-      name: g.name, color: g.color, spreadQ: g.spreadQ,
-      libId: g.libId, iconId: g.iconId || 'leaf',
-      parentBed: bed?.id, locked: false,
-    };
-    S.plants.push(p);
-    drawState.ghost = null; drawState.ghostType = null;
-    setTool('select');   // resets tool state, clears any lingering selection
-    S.setSel(p);         // re-select the placed plant
-    openCard('plant', p);
-    showView('v-card');
-    openSB();
-    S.markDirty(); draw(); renderExplorer();
+    createPlantAt(g, wx, wy, cb || S.beds.find(b => pointInBed(b, wx, wy)));
   }
 }
 
@@ -2650,6 +2647,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     e.preventDefault();
     if (tool === 'measure') { clearMeasure(); setTool('select'); draw(); return; }
+    if (drawState.offsetPlace)  { cancelOffsetPlace(); draw(); return; }
     if (drawState.plantFlow)    { cancelPlantFlow(); draw(); return; }
     if (drawState.ghost)        { drawState.ghost = null; drawState.ghostType = null; draw(); return; }
     if (drawState.bedDraw)      { cancelAllDrawing(); setTool('select'); draw(); return; }
