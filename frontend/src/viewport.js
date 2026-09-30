@@ -119,6 +119,64 @@ document.addEventListener('mouseup', e => {
 
 wrap.addEventListener('contextmenu', e => e.preventDefault());
 
+// ── Touch navigation: 1-finger drag = pan, 2-finger pinch = zoom + pan, tap = click ──
+
+const TAP_SLOP = 8;
+let _t = null;  // { mode:'one'|'two', sx, sy, lx, ly, moved, dist, mx, my }
+
+function _touchInUI(e) { return e.target.closest('#sb') || e.target.closest('#hud'); }
+function _mid(a, b) { return [(a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2]; }
+function _dist(a, b) { return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
+
+wrap.addEventListener('touchstart', e => {
+  if (_touchInUI(e)) return;
+  if (e.touches.length === 1) {
+    const t = e.touches[0];
+    _t = { mode: 'one', sx: t.clientX, sy: t.clientY, lx: t.clientX, ly: t.clientY, moved: false };
+  } else if (e.touches.length === 2) {
+    const [a, b] = e.touches;
+    const [mx, my] = _mid(a, b);
+    _t = { mode: 'two', moved: true, dist: _dist(a, b), mx, my };
+  }
+}, { passive: true });
+
+wrap.addEventListener('touchmove', e => {
+  if (!_t) return;
+  if (_t.mode === 'one' && e.touches.length === 1) {
+    const t = e.touches[0];
+    if (!_t.moved && Math.hypot(t.clientX - _t.sx, t.clientY - _t.sy) < TAP_SLOP) return;
+    _t.moved = true;
+    setPan(px + t.clientX - _t.lx, py + t.clientY - _t.ly);
+    _t.lx = t.clientX; _t.ly = t.clientY;
+    wrap.dispatchEvent(new CustomEvent('vp:pan', { bubbles: true }));
+  } else if (e.touches.length === 2) {
+    const [a, b] = e.touches;
+    const [mx, my] = _mid(a, b);
+    const d = _dist(a, b);
+    if (_t.mode !== 'two') _t = { mode: 'two', moved: true, dist: d, mx, my };
+    const newZ = Math.max(0.12, Math.min(6, z * (d / _t.dist)));
+    setZoom(newZ, mx, my);
+    setPan(px + mx - _t.mx, py + my - _t.my);
+    _t.dist = d; _t.mx = mx; _t.my = my;
+    document.getElementById('zoom-fit-btn').textContent = Math.round(z * 100) + '%';
+    wrap.dispatchEvent(new CustomEvent('vp:zoom', { bubbles: true }));
+  }
+  e.preventDefault();
+}, { passive: false });
+
+function _touchEnd(e) {
+  if (!_t) return;
+  // A drag/pinch must not fall through as a synthesized click on release.
+  if (_t.moved && e.cancelable) e.preventDefault();
+  if (e.touches.length === 0) _t = null;
+  else if (e.touches.length === 1) {
+    const t = e.touches[0];
+    _t = { mode: 'one', sx: t.clientX, sy: t.clientY, lx: t.clientX, ly: t.clientY, moved: true };
+  }
+}
+wrap.addEventListener('touchend', _touchEnd, { passive: false });
+wrap.addEventListener('touchcancel', () => { _t = null; }, { passive: true });
+
 wrap.addEventListener('wheel', e => {
   if (e.target.closest('#sb') || e.target.closest('#hud')) return;
   e.preventDefault();

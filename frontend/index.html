@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Garden Tool</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&family=Lobster&family=Fredoka+One&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -12,7 +12,7 @@ body{background:#0c1a07;font-family:'DM Sans',system-ui,sans-serif;color:#c8e8a0
 #app{position:relative;width:100vw;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 
 /* ── Canvas area ── */
-#cv-wrap{position:relative;flex:1;overflow:hidden;min-height:0;}
+#cv-wrap{position:relative;flex:1;overflow:hidden;min-height:0;touch-action:none;}
 #cv{position:absolute;inset:0;width:100%;height:100%;}
 
 /* ── Sidebar ── */
