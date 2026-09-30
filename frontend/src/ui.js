@@ -1164,6 +1164,13 @@ function bedCardHTML(b) {
   const borderWidth  = b.borderWidth  || 'normal';
 
   const isPoly = b.shape === 'poly';
+  const isCircle = b.shape === 'circle';
+  const circleDimsSection = `
+    <div class="ff"><label>Diameter (in)</label><input id="bed-dia" data-wt="inch" value="${fInFrac(b.w)}"></div>
+    <div class="g2" style="align-items:end;margin-top:2px">
+      <div class="ff"><label>Soil depth (in)</label><input id="bed-depth" type="number" min="1" max="60" step="1" value="${b.depthIn ?? ''}"></div>
+    </div>
+    ${posHTML(b, true)}`;
   const colorRowHidden = b.infill && b.infill !== 'none';
 
   const crIn = Math.round((b.cr || 0) / 4);
@@ -1194,7 +1201,7 @@ function bedCardHTML(b) {
     <span class="cs-chev open"><svg width="11" height="13" viewBox="0 0 10 13" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="0" width="2" height="6.5" rx="1"/><rect x="1" y="1.2" width="8" height="2" rx="1"/><path d="M2 7 H8 Q8.5 12.5 5 12.5 Q1.5 12.5 2 7 Z"/></svg></span>
   </div>
   <div class="cs-body open" id="cs-body-dims">
-  ${isPoly ? polyDimsSection : `
+  ${isCircle ? circleDimsSection : isPoly ? polyDimsSection : `
     <div class="g2">
       <div class="ff"><label>Width (in)</label><input id="bed-w" data-wt="inch" value="${fInFrac(b.w)}"></div>
       <div class="ff"><label>Length (in)</label><input id="bed-h" data-wt="inch" value="${fInFrac(b.h)}"></div>
@@ -2146,6 +2153,12 @@ function bindCardEvents(type, obj) {
 
     on('bed-name', v => { obj.name = v; draw(); renderExplorer(); });
     on('bed-loc',  v => obj.location = v);
+    on('bed-dia',  v => {
+      const d = Math.max(8, pIn(v)), c = obj.x + obj.w / 2, m = obj.y + obj.h / 2;
+      obj.w = obj.h = d; obj.x = c - d / 2; obj.y = m - d / 2;
+      S.markDirty(); draw();
+    });
+    on('bed-depth', v => { obj.depthIn = Math.max(1, parseFloat(v) || 1); obj.height = `${obj.depthIn}"`; S.markDirty(); });
     on('bed-w',    v => { obj.w = Math.max(8, pIn(v)); draw(); });
     on('bed-h',    v => { obj.h = Math.max(8, pIn(v)); draw(); });
     on('bed-cr',   v => { obj.cr = Math.max(0, pIn(v)); draw(); });

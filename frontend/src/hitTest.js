@@ -7,7 +7,7 @@ import {
   yardObjects, beds, plants, wItems, faucets, pipes, connectors,
   sel, YARD, snapNodes, L,
 } from './state.js';
-import { isDrip, hitPolyline, pointInPolygon, dist, clamp, polylineCentroid, getLabelWorldPos } from './utils.js';
+import { isDrip, hitPolyline, pointInPolygon, pointInBed, dist, clamp, polylineCentroid, getLabelWorldPos } from './utils.js';
 import { getYardObjectHandles } from './renderer.js';
 import { D2R } from './constants.js';
 
@@ -146,9 +146,7 @@ export function hitTest(wx, wy, z) {
     if (b.shape === 'poly' && b.pts?.length >= 3) {
       if (pointInPolygon(b.pts, wx, wy)) return { obj: b, type: 'bed' };
     } else if (b.x !== undefined) {
-      if (wx >= b.x && wx <= b.x + b.w && wy >= b.y && wy <= b.y + b.h) {
-        return { obj: b, type: 'bed' };
-      }
+      if (pointInBed(b, wx, wy)) return { obj: b, type: 'bed' };
     }
   }
 

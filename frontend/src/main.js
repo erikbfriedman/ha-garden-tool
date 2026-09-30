@@ -10,7 +10,7 @@ import {
   undo, redo, L, YARD, GS, yardObjects, beds, plants, wItems, faucets, pipes,
   plantLib, sel, setSel, setMultiSel,
 } from './state.js';
-import { setTool, initYardPicker, initSprPicker, confirmConnPopup, cancelConnPopup, initSpacingEditOverlay } from './tools.js';
+import { setTool, initYardPicker, initSprPicker, initPlanterPicker, confirmConnPopup, cancelConnPopup, initSpacingEditOverlay } from './tools.js';
 import {
   renderExplorer, renderSettings, updateUndoRedo, openCard, toggleSB, closeSB, closeCard,
 } from './ui.js';
@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     't-pipe':      'pipe',
     't-sprinkler': 'sprinkler',
     't-polybed':   'polybed',
+    't-planter':   'planter',
     't-drip':      'drip',
   };
   for (const [id, tool] of Object.entries(toolBtns)) {
@@ -210,6 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 14. Sub-pickers
   initYardPicker();
   initSprPicker();
+  initPlanterPicker();
   initSpacingEditOverlay();
 
   // 15. Re-draw on viewport pan/zoom (events bubble from cv-wrap)

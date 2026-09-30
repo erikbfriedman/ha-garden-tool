@@ -15,14 +15,14 @@ import { renderLib, setLibBedTarget, renderYardLib } from './library.js';
 import {
   uid, pIn, fIn, fInFrac, isDrip, deepClone, dist, clamp, evalMathIn, evalMathNum,
   emitterCount, spacingForCount, angleSnap15, getLabelWorldPos, applyPerpendicularSnap, bendGeometry,
-  pointInPolygon,
+  pointInPolygon, pointInBed,
 } from './utils.js';
 import { moveWithBed } from './state.js';
 import {
   D2R, R2D, BED_COLORS, SPR_DEF, SPR_TYPES, YARD_OBJECT_TYPES, FENCE_DEFAULTS, RAILING_DEFAULTS, IN, FT,
   CONNECTOR_TYPES, PIPE_SIZES_IN, PIPE_SIZE_LABELS, CONN_LEG_ANGLES,
   FAUCET_THREAD_SIZES, FAUCET_THREAD_TYPES, HOSE_CONN_TYPES, PIPE_MIN_BEND_QIN,
-  STEPS_DEFAULTS,
+  STEPS_DEFAULTS, PLANTER_TYPES,
 } from './constants.js';
 import {
   onMeasureDown, onMeasureMove, onMeasureDoubleClick, onMeasureBackspace, clearMeasure, mState,
@@ -38,6 +38,7 @@ import {
 let tool = 'select';
 let activeSprType = 'Full circle';
 let activeYardType = 'house';
+let activePlanter = { type: 'pot', diaIn: 12 };
 
 // Drag state
 let dragging = false, dragOX = 0, dragOY = 0;
@@ -197,6 +198,7 @@ export function setTool(t) {
   if (btn) btn.classList.add('active');
   // Show/hide sub-pickers
   document.getElementById('spr-picker')?.classList.toggle('show', t === 'sprinkler');
+  document.getElementById('planter-picker')?.classList.toggle('show', t === 'planter');
   // Cursor
   const cv = VP.getCanvas();
   if (t === 'yard') {
@@ -206,6 +208,7 @@ export function setTool(t) {
   } else {
     cv.style.cursor = TOOL_CURSORS[t] || 'crosshair';
   }
+  if (t === 'planter') makePlanterGhost();
   // Open library views when those tools are activated
   if (t === 'plant') openLibrary();
   if (t === 'yard')  openYardObjectLib();
@@ -214,6 +217,7 @@ export function setTool(t) {
     bed:      'Click + drag to draw a garden bed',
     yard:     'Click + drag (rect/circle) or click vertices (polygon)',
     plant:    'Showing plant library…',
+    planter:  'Click to place the planter · change type or diameter in the sidebar',
     faucet:   'Click to place a faucet',
     pipe:     'Click from faucet to draw pipe · Double-click to finish',
     sprinkler:'Click to place a sprinkler',
@@ -534,6 +538,9 @@ export function fillBedWithPlant(bed, def, layout = 'linear', removeOrigin = nul
       // For poly beds, only include positions inside the polygon
       if (bed.shape === 'poly' && bed.pts?.length >= 3) {
         if (!pointInPolygon(bed.pts, cx, cy)) continue;
+      } else if (bed.shape === 'circle') {
+        const br = bed.w / 2;
+        if (Math.hypot(cx - (bx + br), cy - (by + br)) > br - spacing / 2 + 0.01) continue;
       }
       positions.push({ x: cx, y: cy });
     }
@@ -1448,8 +1455,9 @@ function onMouseMove(e) {
     const newX = Math.min(wx, ax), newY = Math.min(wy, ay);
     const rawW = Math.max(8, Math.abs(wx - ax));
     const rawH = Math.max(8, Math.abs(wy - ay));
-    const newW = snapToInch(rawW);
-    const newH = snapToInch(rawH);
+    const isCirc = b.shape === 'circle';
+    const newW = isCirc ? snapToInch(Math.max(rawW, rawH)) : snapToInch(rawW);
+    const newH = isCirc ? newW : snapToInch(rawH);
     // Recompute position from anchor after inch-snap (keep anchor corner fixed)
     const snapX = ax < wx ? ax : ax - newW;
     const snapY = ay < wy ? ay : ay - newH;
@@ -2282,7 +2290,7 @@ function placeSprinkler(wx, wy) {
   }
   // Fall back to interior bed assignment
   if (!bedId) {
-    const bed = S.beds.find(b => wx >= b.x && wx <= b.x + b.w && wy >= b.y && wy <= b.y + b.h);
+    const bed = S.beds.find(b => pointInBed(b, wx, wy));
     bedId = bed?.id;
   }
 
@@ -2346,15 +2354,71 @@ function finishDrip() {
 function findBedForPts(pts) {
   const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
   const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
-  return S.beds.find(b => cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h);
+  return S.beds.find(b => pointInBed(b, cx, cy));
+}
+
+function makePlanterGhost() {
+  const t = PLANTER_TYPES.find(x => x.id === activePlanter.type) || PLANTER_TYPES[0];
+  drawState.ghost = {
+    x: _lastWX, y: _lastWY, d: activePlanter.diaIn * IN,
+    color: t.color, planterType: t.id, depthIn: t.depthIn,
+  };
+  drawState.ghostType = 'planter';
+}
+
+export function initPlanterPicker() {
+  const el = document.getElementById('planter-picker');
+  if (!el) return;
+  const opts = PLANTER_TYPES.map(t => `<option value="${t.id}">${t.icon} ${t.label}</option>`).join('');
+  el.innerHTML = `
+    <div class="spr-pt">Planter</div>
+    <div class="ff"><label>Type</label><select id="planter-type">${opts}</select></div>
+    <div class="ff"><label>Diameter (in)</label>
+      <input id="planter-dia" type="number" min="4" max="120" step="1" value="${activePlanter.diaIn}"></div>`;
+  const sel = el.querySelector('#planter-type'), dia = el.querySelector('#planter-dia');
+  sel.value = activePlanter.type;
+  sel.addEventListener('change', () => {
+    const t = PLANTER_TYPES.find(x => x.id === sel.value) || PLANTER_TYPES[0];
+    activePlanter = { type: t.id, diaIn: t.diaIn };
+    dia.value = t.diaIn;
+    if (tool === 'planter') { makePlanterGhost(); draw(); }
+  });
+  dia.addEventListener('input', () => {
+    const v = parseFloat(dia.value);
+    if (!(v >= 4)) return;
+    activePlanter.diaIn = v;
+    if (tool === 'planter') { makePlanterGhost(); draw(); }
+  });
 }
 
 function placeGhost(wx, wy) {
   const g = drawState.ghost;
   const type = drawState.ghostType;
+  if (type === 'planter') {
+    const r = g.d / 2;
+    const t = PLANTER_TYPES.find(x => x.id === g.planterType) || PLANTER_TYPES[0];
+    const base = t.label.replace(/\s*\(.*\)/, '');
+    const n = S.beds.filter(b => b.shape === 'circle').length + 1;
+    S.snap();
+    const b = {
+      id: uid(), shape: 'circle', x: wx - r, y: wy - r, w: g.d, h: g.d, cr: 0,
+      name: `${base} ${n}`, color: t.color, borderColor: t.color, borderWidth: 'heavy',
+      infill: 'dirt', isRaised: true, height: `${g.depthIn}"`,
+      planterType: t.id, depthIn: g.depthIn,
+      location: '', locked: false, lattices: [],
+    };
+    S.beds.push(b);
+    setTool('select');
+    S.setSel(b);
+    openCard('bed', b);
+    showView('v-card');
+    openSB();
+    S.markDirty(); draw(); renderExplorer();
+    return;
+  }
   if (type === 'plant') {
     S.snap();
-    const bed = S.beds.find(b => wx >= b.x && wx <= b.x + b.w && wy >= b.y && wy <= b.y + b.h);
+    const bed = S.beds.find(b => pointInBed(b, wx, wy));
     const p = {
       id: uid(), x: wx, y: wy,
       name: g.name, color: g.color, spreadQ: g.spreadQ,
@@ -3266,7 +3330,7 @@ VP.getCanvas().addEventListener('contextmenu', e => {
       connectors.find(c => dist(wx, wy, c.x, c.y) < r) ||
       S.wItems.find(w => dist(wx, wy, w.x, w.y) < r) ||
       S.plants.find(p => dist(wx, wy, p.x, p.y) < r) ||
-      S.beds.find(b => wx >= b.x && wx <= b.x + b.w && wy >= b.y && wy <= b.y + b.h) ||
+      S.beds.find(b => pointInBed(b, wx, wy)) ||
       S.yardObjects.find(o => {
         if (o.pts?.length) return o.pts.some(p => dist(wx, wy, p.x, p.y) < r * 2);
         return dist(wx, wy, o.x || 0, o.y || 0) < r;
@@ -3665,7 +3729,7 @@ function placeConnector(type, wx, wy, opts = {}) {
   };
   // Set parentBed + spray properties for sprinkler terminus placed inside a bed
   if (type === 'sprinkler') {
-    const bed = S.beds.find(b => wx >= b.x && wx <= b.x + b.w && wy >= b.y && wy <= b.y + b.h);
+    const bed = S.beds.find(b => pointInBed(b, wx, wy));
     if (bed) conn.parentBed = bed.id;
     conn.sprType = activeSprType || 'Full circle';
     const sprDef = SPR_DEF[conn.sprType] || SPR_DEF['Full circle'];

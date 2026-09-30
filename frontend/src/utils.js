@@ -160,6 +160,16 @@ export function pointInPolygon(pts, px, py) {
   return inside;
 }
 
+/** True if (px,py) lies inside a bed — rect, polygon, or circular planter. */
+export function pointInBed(b, px, py) {
+  if (b.shape === 'poly' && b.pts?.length >= 3) return pointInPolygon(b.pts, px, py);
+  if (b.shape === 'circle') {
+    const r = b.w / 2;
+    return Math.hypot(px - (b.x + r), py - (b.y + r)) <= r;
+  }
+  return px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h;
+}
+
 /**
  * Emitter positions along a polyline at regular spacing.
  * Returns array of {x, y} points.

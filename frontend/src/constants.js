@@ -347,6 +347,16 @@ export const SIDE_ANG = { North: 90, South: 270, East: 180, West: 0 };
 
 export const BED_COLORS = ['#2d5a1b', '#1a4a2e', '#3a5520', '#264d1a', '#1d4a35', '#2a4820'];
 
+/** Circular container presets. diaIn / depthIn are in inches. */
+export const PLANTER_TYPES = [
+  { id: 'pot',      label: 'Pot (12")',          icon: '🪴', diaIn: 12, depthIn: 10, color: '#8a4b2a' },
+  { id: 'potl',     label: 'Large pot (18")',    icon: '🪴', diaIn: 18, depthIn: 14, color: '#8a4b2a' },
+  { id: 'bucket',   label: 'Bucket (5 gal)',     icon: '🪣', diaIn: 12, depthIn: 14, color: '#4a5560' },
+  { id: 'barrel',   label: 'Half barrel (24")',  icon: '🛢', diaIn: 24, depthIn: 16, color: '#6b4a2b' },
+  { id: 'growbag',  label: 'Grow bag (14")',     icon: '🛍', diaIn: 14, depthIn: 12, color: '#3a3a3a' },
+  { id: 'custom',   label: 'Custom',             icon: '⭕', diaIn: 16, depthIn: 12, color: '#7a5a3a' },
+];
+
 /** Extended palette including earth tones for the Country theme. */
 export const ALL_BED_COLORS = [
   // Greens (garden beds)

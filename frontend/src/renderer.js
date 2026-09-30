@@ -1741,6 +1741,11 @@ function _bedPath(ctx, b, outset) {
   const o = outset || 0;
   if (b.shape === 'poly' && b.pts?.length >= 3) {
     _polyPath(ctx, b.pts, b.cr || 0, true);
+  } else if (b.shape === 'circle') {
+    const r = b.w / 2;
+    ctx.beginPath();
+    ctx.arc(b.x + r, b.y + r, r + o, 0, Math.PI * 2);
+    ctx.closePath();
   } else {
     rrect(ctx, b.x - o, b.y - o, b.w + o * 2, b.h + o * 2, b.cr || 0);
   }
@@ -1759,6 +1764,19 @@ function drawBeds(ctx, z) {
       ctx.fill(); ctx.stroke();
       ctx.setLineDash([]);
     }
+  }
+
+  // Ghost planter following the cursor before placement
+  if (drawState.ghost && drawState.ghostType === 'planter') {
+    const g = drawState.ghost, r = g.d / 2;
+    ctx.save();
+    ctx.globalAlpha = 0.65;
+    ctx.fillStyle = g.color + '88';
+    ctx.strokeStyle = g.color;
+    ctx.lineWidth = 2 / z;
+    ctx.setLineDash([6 / z, 3 / z]);
+    ctx.beginPath(); ctx.arc(g.x, g.y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.restore();
   }
 
   // Ghost poly bed being drawn — reuses _polyPts / yardStart (same as yard polygon)
@@ -1864,14 +1882,15 @@ function drawBeds(ctx, z) {
     }
 
     // ── Bed name ───────────────────────────────────────────────────────────
-    const labelX = isPoly ? (b.pts.reduce((s, p) => s + p.x, 0) / b.pts.length) : (b.x + 4 / z);
-    const labelY = isPoly ? (b.pts.reduce((s, p) => s + p.y, 0) / b.pts.length) : (b.y + 3 / z);
-    const labelAlign = isPoly ? 'center' : 'left';
+    const isCircle = b.shape === 'circle';
+    const labelX = isPoly ? (b.pts.reduce((s, p) => s + p.x, 0) / b.pts.length) : isCircle ? (b.x + b.w / 2) : (b.x + 4 / z);
+    const labelY = isPoly ? (b.pts.reduce((s, p) => s + p.y, 0) / b.pts.length) : isCircle ? (b.y + b.h + 3 / z) : (b.y + 3 / z);
+    const labelAlign = (isPoly || isCircle) ? 'center' : 'left';
     drawObjLabel(ctx, z, b, labelX, labelY,
       { align: labelAlign, color: 'rgba(255,255,255,0.6)', defaultSize: 10 });
 
     // ── Raised bed height label (rect only) ────────────────────────────────
-    if (!isPoly && b.isRaised && b.height) {
+    if (!isPoly && !isCircle && b.isRaised && b.height) {
       ctx.fillStyle = 'rgba(140,220,80,0.5)';
       ctx.font = `${Math.max(6, 9 / z)}px DM Mono, monospace`;
       ctx.textAlign = 'right';
