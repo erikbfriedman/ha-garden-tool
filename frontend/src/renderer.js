@@ -994,6 +994,7 @@ function drawYardObject(ctx, z, obj) {
 }
 
 function drawYardObjLabel(ctx, z, obj, def) {
+  if (!L.labels) return;
   const text = obj.label || obj.name;
   const emojiOnly = !text && obj.shape === 'circle' && obj.r > 12 && def?.icon;
   if (!text && !emojiOnly) return;
@@ -1234,7 +1235,7 @@ function drawFenceShape(ctx, z, obj, color, isSelected) {
   }
 
   // 4. Fence name label at midpoint
-  if (obj.showLabel !== false && (obj.label || obj.name)) {
+  if (L.labels && obj.showLabel !== false && (obj.label || obj.name)) {
     const mid = Math.floor(pts.length / 2);
     const mx = (pts[mid - 1].x + pts[mid].x) / 2;
     const my = (pts[mid - 1].y + pts[mid].y) / 2;
@@ -1348,7 +1349,7 @@ function drawRailingShape(ctx, z, obj, color, isSelected) {
     ctx.font         = `${Math.max(8, 10 / z)}px DM Sans, sans-serif`;
     ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(obj.label || obj.name, mx, my - halfT - 8 / z);
+    if (L.labels) ctx.fillText(obj.label || obj.name, mx, my - halfT - 8 / z);
     ctx.restore();
   }
 
@@ -1708,6 +1709,7 @@ const INFILL_BASE = { dirt:'#7a5c3a', mulch:'#4a2810', bark:'#6b3a1a', straw:'#c
  * cx/cy = anchor point in world coords; opts can override align, baseline, color, defaultSize.
  */
 function drawObjLabel(ctx, z, obj, cx, cy, opts = {}) {
+  if (!L.labels) return;
   if (obj.showLabel === false) return;
   const text = obj.label || obj.name;
   if (!text) return;
@@ -2566,7 +2568,7 @@ function drawSnapNodes(ctx, z) {
     ctx.arc(sn.x, sn.y, cr, 0, Math.PI * 2);
     ctx.fill();
     // Label
-    if (sn.name) {
+    if (sn.name && L.labels) {
       ctx.font = `${10 / z}px sans-serif`;
       ctx.fillStyle = isSel ? '#fff' : 'rgba(255,210,60,0.7)';
       ctx.fillText(sn.name, sn.x + r * 1.4, sn.y - r * 0.5);

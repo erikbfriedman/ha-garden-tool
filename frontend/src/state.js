@@ -81,6 +81,7 @@ export const L = {
   spread: true,
   water: true,
   vines: true,
+  labels: true,
   snapNodes: true,
 };
 

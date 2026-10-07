@@ -48,13 +48,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 3. Layer toggles (IDs: l-yard, l-pipes, l-beds, l-plants, l-spread, l-water, l-vines)
   const layerMap = {
-    'l-yard':   'yard',
+    'l-yard':   'yardObjects',
     'l-pipes':  'pipes',
     'l-beds':   'beds',
     'l-plants': 'plants',
     'l-spread': 'spread',
     'l-water':  'water',
     'l-vines':  'vines',
+    'l-labels': 'labels',
   };
   for (const [id, key] of Object.entries(layerMap)) {
     document.getElementById(id)?.addEventListener('change', e => {
