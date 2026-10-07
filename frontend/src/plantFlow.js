@@ -13,7 +13,7 @@ import { IN } from './constants.js';
 import { showView, setTool, showHint, fillBedWithPlant, openLibrary } from './tools.js';
 import { renderExplorer, closeSB } from './ui.js';
 
-const isNarrow = () => window.matchMedia('(max-width: 768px)').matches;
+const isNarrow = () => VP.isCompact();
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const num = (v, d) => { const n = parseFloat(v); return Number.isFinite(n) ? n : d; };
 
@@ -103,7 +103,7 @@ export function cancelPlantFlow() {
 function focusBed(b) {
   const box = bedBox(b);
   const wrap = document.getElementById('cv-wrap').getBoundingClientRect();
-  const pad = isNarrow() ? { bottom: wrap.height * 0.55 } : { left: 260 };
+  const pad = VP.overlayPad();
   VP.focusRect(box.x, box.y, box.w, box.h, pad);
 }
 

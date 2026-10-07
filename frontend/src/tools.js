@@ -186,7 +186,7 @@ const TOOL_CURSORS = {
 
 /** On narrow screens the sidebar covers the canvas — hide it once the user is ready to place. */
 function collapseSBForPlacement() {
-  if (window.matchMedia('(max-width: 768px)').matches) closeSB();
+  if (VP.isCompact()) closeSB();
 }
 
 export function setTool(t) {

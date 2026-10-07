@@ -64,10 +64,21 @@ export function fit() {
 }
 
 /** Zoom/pan so a world rect fills the free canvas area (excluding overlay padding in px). */
+export const isLandscapePhone = () => window.matchMedia('(orientation: landscape) and (max-height: 500px)').matches;
+/** True when the sidebar/panels should get out of the way (phone portrait or landscape). */
+export const isCompact = () => window.matchMedia('(max-width: 768px)').matches || isLandscapePhone();
+/** Canvas area covered by the placement panel in the current layout. */
+export function overlayPad() {
+  const r = wrap.getBoundingClientRect();
+  if (isLandscapePhone()) return { right: Math.min(340, r.width * 0.48) };
+  if (window.matchMedia('(max-width: 768px)').matches) return { bottom: r.height * 0.55 };
+  return { left: 260 };
+}
+
 export function focusRect(x, y, w, h, pad = {}) {
   const r = wrap.getBoundingClientRect();
-  const left = pad.left || 0, bottom = pad.bottom || 0, m = 36;
-  const availW = Math.max(80, r.width - left), availH = Math.max(80, r.height - bottom);
+  const left = pad.left || 0, right = pad.right || 0, bottom = pad.bottom || 0, m = 36;
+  const availW = Math.max(80, r.width - left - right), availH = Math.max(80, r.height - bottom);
   z = Math.max(0.12, Math.min(6, (availW - m * 2) / Math.max(w, 1), (availH - m * 2) / Math.max(h, 1)));
   px = left + availW / 2 - (x + w / 2) * z;
   py = availH / 2 - (y + h / 2) * z;

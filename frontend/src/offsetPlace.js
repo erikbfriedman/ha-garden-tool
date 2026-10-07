@@ -17,7 +17,7 @@ import { IN, PLANTER_TYPES, YARD_OBJECT_TYPES, SPR_DEF } from './constants.js';
 import { showView, setTool, commitPoint, startFreePlace, setSprType, openLibrary } from './tools.js';
 import { closeSB } from './ui.js';
 
-const isNarrow = () => window.matchMedia('(max-width: 768px)').matches;
+const isNarrow = () => VP.isCompact();
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const RECT_DEFAULT_FT = { house: [30, 24], garage: [20, 20], shed: [8, 10], driveway: [12, 20], steps: [4, 3] };
@@ -201,7 +201,7 @@ function focus() {
   if (maxX - minX < MIN) { const c = (minX + maxX) / 2; minX = c - MIN / 2; maxX = c + MIN / 2; }
   if (maxY - minY < MIN) { const c = (minY + maxY) / 2; minY = c - MIN / 2; maxY = c + MIN / 2; }
   const wrap = document.getElementById('cv-wrap').getBoundingClientRect();
-  const pad = isNarrow() ? { bottom: wrap.height * 0.55 } : { left: 260 };
+  const pad = VP.overlayPad();
   VP.focusRect(minX, minY, maxX - minX, maxY - minY, pad);
   draw();
 }
