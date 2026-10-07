@@ -4,7 +4,7 @@
  * initialises the viewport, and kicks off the first draw.
  */
 
-import { fit, adjZ } from './viewport.js';
+import { fit, adjZ, isCompact } from './viewport.js';
 import { draw, drawState } from './renderer.js';
 import {
   undo, redo, L, YARD, GS, yardObjects, beds, plants, wItems, faucets, pipes,
@@ -12,7 +12,7 @@ import {
 } from './state.js';
 import { setTool, initYardPicker, initSprPicker, confirmConnPopup, cancelConnPopup, initSpacingEditOverlay } from './tools.js';
 import {
-  renderExplorer, renderSettings, updateUndoRedo, openCard, toggleSB, closeSB, closeCard,
+  renderExplorer, renderSettings, updateUndoRedo, openCard, openSB, closeSB, closeCard,
 } from './ui.js';
 import { openAppSettings, closeAppSettings, openGardenInfo, closeGardenInfo, applyTheme } from './settings.js';
 import { renderLib, newPlantDef } from './library.js';
@@ -100,9 +100,21 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('fm-import')?.addEventListener('click', () => fileOp('fileImport'));
 
   // 8. Sidebar toggle (☰ Tools button)
+  // Open the sidebar on a given view; clicking the same button again while it shows that view closes it
+  const sbEl = document.getElementById('sb');
+  const isShowing = id => sbEl.classList.contains('open') && !document.getElementById(id)?.classList.contains('hidden');
+  function toggleSBView(id, wasShowing = isShowing(id)) {
+    if (wasShowing) { closeSB(); return; }
+    showView(id); openSB();
+  }
   document.getElementById('mb-tools-btn')?.addEventListener('click', () => {
+    const was = isShowing('v-tools');   // read before closeCard() resets the view
     setSel(null); setMultiSel([]); closeCard(); draw();
-    toggleSB();
+    toggleSBView('v-tools', was);
+  });
+  document.getElementById('mb-explorer-btn')?.addEventListener('click', () => {
+    renderExplorer();
+    toggleSBView('v-explorer');
   });
 
   document.getElementById('sb-close')?.addEventListener('click', () => {
@@ -117,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     viewBtn.addEventListener('click', e => {
       e.stopPropagation();
       viewMenu.classList.toggle('open');
-      ['mb-file-menu', 'mb-settings-menu', 'mb-functions-menu']
+      ['mb-file-menu', 'mb-settings-menu']
         .forEach(id => document.getElementById(id)?.classList.remove('open'));
     });
     viewMenu.addEventListener('click', e => e.stopPropagation());
@@ -135,30 +147,18 @@ document.addEventListener('DOMContentLoaded', () => {
       e.stopPropagation();
       settingsMenu.classList.toggle('open');
       fileMenu?.classList.remove('open');
-      functionsMenu?.classList.remove('open');
     });
     document.addEventListener('click', () => settingsMenu.classList.remove('open'));
   }
 
-  // 9b. Functions menu
-  const functionsBtn  = document.getElementById('mb-functions-btn');
-  const functionsMenu = document.getElementById('mb-functions-menu');
-  if (functionsBtn && functionsMenu) {
-    functionsBtn.addEventListener('click', e => {
-      e.stopPropagation();
-      functionsMenu.classList.toggle('open');
-      fileMenu?.classList.remove('open');
-      settingsMenu?.classList.remove('open');
-    });
-    document.addEventListener('click', () => functionsMenu.classList.remove('open'));
-  }
+  // Functions now live in the Tools list; hide the sidebar on compact layouts so the overlay is visible
   document.getElementById('fm-flow-calc')?.addEventListener('click', () => {
-    functionsMenu?.classList.remove('open');
+    if (isCompact()) closeSB();
     openFlowCalc();
   });
   document.getElementById('fc-close')?.addEventListener('click', closeFlowCalc);
   document.getElementById('fm-bom')?.addEventListener('click', () => {
-    functionsMenu?.classList.remove('open');
+    if (isCompact()) closeSB();
     openBOM();
   });
   document.getElementById('bom-close')?.addEventListener('click', closeBOM);
@@ -229,10 +229,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function hasStyle(id, v) { const el = document.getElementById(id); return el && el.style.display === v; }
 
     // 1. Dropdowns (file / settings / functions menus)
-    const anyDropdown = ['mb-file-menu', 'mb-settings-menu', 'mb-functions-menu', 'mb-view-menu']
+    const anyDropdown = ['mb-file-menu', 'mb-settings-menu', 'mb-view-menu']
       .some(id => document.getElementById(id)?.classList.contains('open'));
     if (anyDropdown) {
-      ['mb-file-menu', 'mb-settings-menu', 'mb-functions-menu', 'mb-view-menu']
+      ['mb-file-menu', 'mb-settings-menu', 'mb-view-menu']
         .forEach(id => document.getElementById(id)?.classList.remove('open'));
       return stop();
     }
